@@ -5,18 +5,26 @@ import numpy as np
 import cv2
 from collections import Counter
 from datetime import datetime
+
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+
 from ultralytics import YOLO
 
+# ───────────────────────────────
+# App Setup
+# ───────────────────────────────
 app = Flask(__name__)
 app.secret_key = "super-secret-key-change-this-in-production"
+
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['STATIC_FOLDER'] = 'static'
 app.config['ALERT_FOLDER'] = os.path.join('static', 'alerts')
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users_and_detections.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -25,10 +33,14 @@ os.makedirs(app.config['STATIC_FOLDER'], exist_ok=True)
 os.makedirs(app.config['ALERT_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+# ───────────────────────────────
+# Models
+# ───────────────────────────────
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -47,96 +59,77 @@ class Detection(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Load YOLO model
-model = YOLO("yolov8m.pt")
+# ───────────────────────────────
+# YOLOv8 Model Setup
+# ───────────────────────────────
+model = YOLO("yolov8m.pt")  # COCO pretrained
 print("YOLO Classes:", model.names)
 
-SHARP_OBJECTS = ["knife", "scissors"]
+# Objects considered sharp or risky
+SHARP_OBJECTS = ["knife", "scissors", "fork"]
+CONTEXT_OBJECTS = ["dining table", "bowl"]
 
-def compute_iou(box1, box2):
-    # box format: [x1, y1, x2, y2]
-    x1 = max(box1[0], box2[0])
-    y1 = max(box1[1], box2[1])
-    x2 = min(box1[2], box2[2])
-    y2 = min(box1[3], box2[3])
-    inter_area = max(0, x2 - x1) * max(0, y2 - y1)
-    if inter_area == 0:
-        return 0.0
-    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
-    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
-    iou = inter_area / float(box1_area + box2_area - inter_area)
-    return iou
+# ───────────────────────────────
+# Helper: Compute IoU for overlap detection
+# ───────────────────────────────
+def compute_iou(boxA, boxB):
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+    interArea = max(0, xB - xA) * max(0, yB - yA)
+    boxAArea = (boxA[2]-boxA[0]) * (boxA[3]-boxA[1])
+    boxBArea = (boxB[2]-boxB[0]) * (boxB[3]-boxB[1])
+    return interArea / (boxAArea + boxBArea - interArea + 1e-6)
 
-def box_center(box):
-    x_center = (box[0] + box[2]) / 2
-    y_center = (box[1] + box[3]) / 2
-    return np.array([x_center, y_center])
-
-def distance_between_boxes(box1, box2):
-    c1 = box_center(box1)
-    c2 = box_center(box2)
-    return np.linalg.norm(c1 - c2)
-
+# ───────────────────────────────
+# Detection Logic
+# ───────────────────────────────
 def detect_and_count(image):
-    # Lower conf threshold to 0.1 to catch faint knives
-    results = model(image, imgsz=960, conf=0.1, iou=0.35)
-
+    results = model(image, imgsz=1280, conf=0.1, iou=0.3)
     annotated = results[0].plot()
     boxes = results[0].boxes
 
     if boxes is None or len(boxes) == 0:
-        print("No detections.")
         return annotated, {}, False, False, None
 
     class_ids = [int(c) for c in boxes.cls]
-    confidences = [float(c) for c in boxes.conf]
     class_names = [model.names[i] for i in class_ids]
-
-    # Debug print all detections with confidence
-    print("Detections with confidences:")
-    for name, conf in zip(class_names, confidences):
-        print(f" - {name}: {conf:.2f}")
-
     counts = dict(Counter(class_names))
 
+    # Detect sharp objects
     sharp_detected = any(obj in SHARP_OBJECTS for obj in class_names)
-    high_risk = False
 
+    # Fallback: person + context → assume risk
+    if not sharp_detected:
+        if "person" in class_names and any(obj in class_names for obj in CONTEXT_OBJECTS):
+            sharp_detected = True
+
+    high_risk = False
     person_boxes = []
     sharp_boxes = []
 
     for box, cls_id in zip(boxes.xyxy, class_ids):
         name = model.names[cls_id]
         coords = box.cpu().numpy()
-
         if name == "person":
             person_boxes.append(coords)
-
         if name in SHARP_OBJECTS:
             sharp_boxes.append(coords)
 
-    # Overlap and proximity logic for high risk
+    # IoU-based overlap
     for p in person_boxes:
         for s in sharp_boxes:
-            iou = compute_iou(p, s)
-            dist = distance_between_boxes(p, s)
-
-            # Log IoU and distance
-            print(f"IoU between person and {model.names[cls_id]}: {iou:.3f}, Distance: {dist:.1f}")
-
-            # Conditions for high risk:
-            # Either overlap or very close proximity (e.g., distance < 100 pixels)
-            if iou > 0.05 or dist < 100:
+            if compute_iou(p, s) > 0.05:
                 high_risk = True
-
                 sx1, sy1, sx2, sy2 = map(int, s)
                 cv2.rectangle(annotated, (sx1, sy1), (sx2, sy2), (0, 0, 255), 5)
                 cv2.putText(annotated, "HIGH RISK!", (sx1, sy1 - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
 
     alert = sharp_detected or high_risk
-
     alert_filename = None
+
     if alert and current_user.is_authenticated:
         ts = time.strftime("%Y%m%d_%H%M%S")
         alert_filename = f"alert_{current_user.id}_{ts}.jpg"
@@ -150,9 +143,165 @@ def save_temp_image(image, filename):
     cv2.imwrite(path, image)
     return filename
 
-# You can keep your Flask routes here unchanged...
+# ───────────────────────────────
+# Routes
+# ───────────────────────────────
+@app.route('/')
+def home():
+    return render_template('home.html')
 
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if not username or not password:
+            return render_template('register.html', error="Required fields missing")
+        if User.query.filter_by(username=username).first():
+            return render_template('register.html', error="Username exists")
+        user = User(username=username, password=generate_password_hash(password))
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user and check_password_hash(user.password, request.form.get('password')):
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        return render_template('login.html', error="Invalid credentials")
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+# ───────── IMAGE ─────────
+@app.route('/upload_image', methods=['POST'])
+@login_required
+def upload_image():
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        return "No file", 400
+    filename = secure_filename(file.filename)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(path)
+    img = cv2.imread(path)
+    annotated, counts, alert, high_risk, alert_fn = detect_and_count(img)
+    output_filename = f"output_{int(time.time())}.jpg"
+    save_temp_image(annotated, output_filename)
+    db.session.add(Detection(
+        user_id=current_user.id,
+        objects_detected=str(counts),
+        alert=alert,
+        high_risk=high_risk,
+        image_filename=alert_fn or output_filename
+    ))
+    db.session.commit()
+    return render_template('result.html',
+                           image_url=f"/static/{output_filename}",
+                           counts=counts,
+                           alert=alert,
+                           high_risk=high_risk)
+
+# ───────── VIDEO ─────────
+@app.route('/upload_video', methods=['POST'])
+@login_required
+def upload_video():
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        return "No file", 400
+    filename = secure_filename(file.filename)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(path)
+    return redirect(url_for('video_feed', filename=filename))
+
+def generate_video(video_path):
+    cap = cv2.VideoCapture(video_path)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        annotated, _, _, _, _ = detect_and_count(frame)
+        _, buffer = cv2.imencode('.jpg', annotated)
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' +
+               buffer.tobytes() + b'\r\n')
+    cap.release()
+
+@app.route('/video_feed/<filename>')
+@login_required
+def video_feed(filename):
+    path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.exists(path):
+        return "Video not found", 404
+    return Response(generate_video(path),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# ───────── WEBCAM ─────────
+@app.route('/webcam')
+@login_required
+def webcam():
+    return render_template('webcam.html')
+
+@app.route('/detect_webcam', methods=['POST'])
+@login_required
+def detect_webcam():
+    data = request.json.get('image', None)
+    encoded = data.split(',')[1]
+    img = cv2.imdecode(np.frombuffer(base64.b64decode(encoded), np.uint8), cv2.IMREAD_COLOR)
+    annotated, counts, alert, high_risk, alert_fn = detect_and_count(img)
+    _, buffer = cv2.imencode('.jpg', annotated)
+    img_base64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode()
+    db.session.add(Detection(
+        user_id=current_user.id,
+        objects_detected=str(counts),
+        alert=alert,
+        high_risk=high_risk,
+        image_filename=alert_fn
+    ))
+    db.session.commit()
+    return jsonify({
+        'image': img_base64,
+        'counts': counts,
+        'alert': alert,
+        'high_risk': high_risk
+    })
+
+# ───────── HISTORY ─────────
+@app.route('/history')
+@login_required
+def history():
+    detections = Detection.query.filter_by(user_id=current_user.id)\
+        .order_by(Detection.timestamp.desc()).limit(20).all()
+    return render_template('history.html', detections=detections)
+
+@app.route('/delete_detection/<int:detection_id>', methods=['POST'])
+@login_required
+def delete_detection(detection_id):
+    detection = Detection.query.get_or_404(detection_id)
+    if detection.image_filename:
+        path = os.path.join(app.config['ALERT_FOLDER'], detection.image_filename)
+        if os.path.exists(path):
+            os.remove(path)
+    db.session.delete(detection)
+    db.session.commit()
+    flash('Deleted successfully', 'success')
+    return redirect(url_for('history'))
+
+# ───────────────────────────────
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True, port=5000)
+
