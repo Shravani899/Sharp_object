@@ -1,0 +1,10 @@
+flask
+flask_sqlalchemy
+flask_login
+werkzeug
+numpy
+opencv-python-headless
+ultralytics
+torch
+torchvision
+pillow
