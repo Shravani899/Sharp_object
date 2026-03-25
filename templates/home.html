@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Vision Detection System - Home{% endblock %}
+
+{% block content %}
+
+<!-- Main Wrapper -->
+<div class="min-h-screen bg-nn-dark text-gray-100">
+
+  <!-- Hero Section -->
+  <section class="relative py-20 lg:py-32 overflow-hidden">
+    <!-- Background gradient + subtle overlay -->
+    <div class="absolute inset-0 bg-gradient-to-br from-nn-dark via-nn-darker to-black opacity-90"></div>
+    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555949963-aa79d9c2e7e3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-20"></div>
+
+    <div class="relative container mx-auto px-6 lg:px-12 text-center z-10">
+      <h1 class="text-5xl md:text-7xl font-extrabold text-nn-blue tracking-tight mb-6 drop-shadow-lg">
+        Vision Detection System
+      </h1>
+      <p class="text-xl md:text-3xl text-gray-300 mb-12 max-w-4xl mx-auto">
+        Real-time object detection using Computer Vision
+      </p>
+
+      <div class="flex flex-col sm:flex-row justify-center gap-6">
+        <a href="{{ url_for('register') }}"
+           class="bg-nn-blue text-nn-dark px-10 py-5 rounded-xl font-bold text-xl hover:bg-cyan-300 transition shadow-2xl transform hover:scale-105">
+          Get Started – Register Now →
+        </a>
+        <a href="{{ url_for('login') }}"
+           class="border-2 border-nn-blue text-nn-blue px-10 py-5 rounded-xl font-bold text-xl hover:bg-nn-blue/20 transition transform hover:scale-105">
+          Login
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-20 bg-nn-darker">
+    <div class="container mx-auto px-6 lg:px-12">
+      <h2 class="text-4xl md:text-5xl font-bold text-center mb-16 text-nn-blue">
+        Why Choose Our System?
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <!-- Feature 1 -->
+        <div class="bg-gray-900/60 backdrop-blur-md border border-gray-700 rounded-2xl p-10 text-center shadow-xl hover:border-nn-blue/50 transition-all duration-300">
+          <div class="text-7xl mb-6">🎥</div>
+          <h4 class="text-3xl font-bold mb-4 text-white">Live Webcam Detection</h4>
+          <p class="text-gray-300 text-lg">
+            Real-time analysis from your camera feed with instant alerts.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="bg-gray-900/60 backdrop-blur-md border border-gray-700 rounded-2xl p-10 text-center shadow-xl hover:border-nn-blue/50 transition-all duration-300">
+          <div class="text-7xl mb-6">🖼️</div>
+          <h4 class="text-3xl font-bold mb-4 text-white">Image & Video Upload</h4>
+          <p class="text-gray-300 text-lg">
+            Upload photos or videos for fast, accurate object detection.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="bg-gray-900/60 backdrop-blur-md border border-gray-700 rounded-2xl p-10 text-center shadow-xl hover:border-nn-blue/50 transition-all duration-300">
+          <div class="text-7xl mb-6">🛡️</div>
+          <h4 class="text-3xl font-bold mb-4 text-white">Person + Weapon Alert</h4>
+          <p class="text-gray-300 text-lg">
+            Special high-risk alert when a person is holding a sharp object.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About & Use Cases -->
+  <section class="py-20 bg-nn-dark">
+    <div class="container mx-auto px-6 lg:px-12">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <!-- About -->
+        <div>
+          <h2 class="text-4xl md:text-5xl font-bold mb-8 text-nn-blue">About the Project</h2>
+          <p class="text-xl text-gray-300 leading-relaxed mb-6">
+            This project is a web-based object detection system built using Flask, YOLOv8, and OpenCV.
+            It detects sharp objects like knives and scissors in real time and provides visual feedback,
+            alerts, and history logging for registered users.
+          </p>
+          <p class="text-xl text-gray-300 leading-relaxed">
+            Ideal for security, surveillance, and safety applications.
+          </p>
+        </div>
+
+        <!-- Use Cases -->
+        <div>
+          <h2 class="text-4xl md:text-5xl font-bold mb-8 text-nn-blue">Where It Can Be Used</h2>
+          <ul class="space-y-6 text-xl text-gray-300">
+            <li class="flex items-center">
+              <span class="text-3xl mr-4 text-nn-blue">✔</span> Airport & railway security
+            </li>
+            <li class="flex items-center">
+              <span class="text-3xl mr-4 text-nn-blue">✔</span> School & college campuses
+            </li>
+            <li class="flex items-center">
+              <span class="text-3xl mr-4 text-nn-blue">✔</span> Shopping malls & events
+            </li>
+            <li class="flex items-center">
+              <span class="text-3xl mr-4 text-nn-blue">✔</span> Banks & financial institutions
+            </li>
+            <li class="flex items-center">
+              <span class="text-3xl mr-4 text-nn-blue">✔</span> Home security systems
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call to Action Bottom -->
+  <section class="py-20 bg-gradient-to-r from-nn-blue/20 to-purple-900/20 text-center border-t border-nn-blue/30">
+    <div class="container mx-auto px-6 lg:px-12">
+      <h2 class="text-4xl md:text-5xl font-bold mb-8 text-white">
+        Ready to Secure Your Space?
+      </h2>
+      <p class="text-2xl text-gray-200 mb-10 max-w-3xl mx-auto">
+        Sign up now and start detecting objects in real time
+      </p>
+      <a href="{{ url_for('register') }}"
+         class="inline-block bg-nn-blue text-nn-dark px-12 py-6 rounded-xl font-bold text-2xl hover:bg-cyan-300 transition shadow-2xl transform hover:scale-105">
+        Register Free Account →
+      </a>
+    </div>
+  </section>
+
+</div>
+
+
+
+{% endblock %}

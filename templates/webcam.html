@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Live Webcam Detection - Vision Detection System{% endblock %}
+
+{% block content %}
+
+<!-- Full-screen centered live detection -->
+<div class="min-h-screen bg-nn-dark px-6 py-12 flex flex-col items-center">
+
+    <!-- Header -->
+    <div class="text-center mb-12 max-w-4xl">
+        <h1 class="text-5xl md:text-6xl font-extrabold text-nn-blue tracking-tight mb-4">
+            Live Webcam Detection
+        </h1>
+        <p class="text-xl md:text-2xl text-gray-400">
+            Real-time object detection from your camera
+        </p>
+    </div>
+
+    <!-- Main Live Card -->
+    <div class="w-full max-w-5xl bg-gray-900/70 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl shadow-nn-blue/20 overflow-hidden">
+        
+        <!-- Video Preview -->
+        <div class="p-6 md:p-10">
+            <video 
+                id="video" 
+                class="w-full rounded-2xl shadow-2xl border border-gray-700/50 bg-black" 
+                autoplay 
+                playsinline
+            ></video>
+
+            <!-- Hidden canvas for frame capture -->
+            <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+            <!-- Action Button -->
+            <div class="text-center mt-10">
+                <button 
+                    onclick="capture()" 
+                    class="inline-flex items-center gap-3 bg-gradient-to-r from-nn-blue to-cyan-600 text-nn-dark font-bold text-2xl py-5 px-12 rounded-2xl shadow-lg hover:shadow-nn-blue/50 hover:scale-[1.02] transition-all duration-300 transform"
+                >
+                    <i class="fas fa-camera text-3xl"></i>
+                    Detect Current Frame
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Section (hidden until detection) -->
+        <div id="result-section" class="p-6 md:p-10 border-t border-gray-700/50" style="display: none;">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Result Image -->
+                <div>
+                    <h3 class="text-2xl font-bold text-nn-blue mb-4 text-center md:text-left">
+                        Detection Result
+                    </h3>
+                    <img 
+                        id="result" 
+                        class="w-full rounded-2xl shadow-xl border border-gray-700/50" 
+                        alt="Detection Result"
+                    >
+                </div>
+
+                <!-- Counts & Alert -->
+                <div class="flex flex-col justify-center">
+                    <div id="counts" class="mb-6 text-gray-300 text-lg"></div>
+                    <div id="alert" class="text-center md:text-left"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Back / History Link -->
+    <div class="mt-12 text-center">
+        <a href="{{ url_for('dashboard') }}" 
+           class="inline-flex items-center gap-3 text-gray-300 hover:text-nn-blue transition-colors duration-200 text-xl">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+    </div>
+
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            console.error("Webcam error:", err);
+            alert("Unable to access webcam. Please allow camera permission.");
+        });
+
+    function capture() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Match canvas to video dimensions
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const dataURL = canvas.toDataURL('image/jpeg');
+
+        // Show loading state (optional)
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('result').src = '';
+        document.getElementById('counts').innerHTML = '<p class="text-gray-400">Detecting...</p>';
+        document.getElementById('alert').innerHTML = '';
+
+        fetch('/detect_webcam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataURL })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('result').src = data.image;
+            document.getElementById('counts').innerHTML = data.table;
+            document.getElementById('alert').innerHTML = data.alert_msg;
+        })
+        .catch(err => {
+            console.error("Detection error:", err);
+            document.getElementById('counts').innerHTML = '<p class="text-red-400">Error during detection</p>';
+        });
+    }
+</script>
+
+{% endblock %}

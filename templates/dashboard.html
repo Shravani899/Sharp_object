@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Vision Detection System{% endblock %}
+
+{% block content %}
+
+<div class="min-h-screen bg-nn-dark px-6 py-12 flex flex-col items-center">
+
+    <!-- Header -->
+    <div class="text-center mb-16 max-w-4xl">
+        <h1 class="text-5xl font-extrabold text-nn-blue mb-4">
+            Welcome back, {{ current_user.username }}!
+        </h1>
+        <p class="text-xl text-gray-400">
+            Start detecting objects in real-time
+        </p>
+    </div>
+
+    <!-- Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+
+        <!-- ================= IMAGE ================= -->
+        <div class="dashboard-card bg-gray-900/70 rounded-3xl shadow-xl p-10 text-center">
+
+            <!-- Icon -->
+            <div class="mx-auto mb-6 w-24 h-24 rounded-full bg-nn-blue/10 flex items-center justify-center">
+                <i class="fas fa-image text-5xl text-nn-blue"></i>
+            </div>
+
+            <h3 class="text-2xl font-bold text-white mb-3">Upload Image</h3>
+            <p class="text-gray-400 mb-6">Detect objects in photos instantly</p>
+
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_image') }}">
+
+                <!-- File Input with Icon -->
+                <div class="relative mb-5">
+                    <input type="file" name="file" accept="image/*" required
+                        class="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white file:hidden cursor-pointer">
+                    
+                    <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-nn-blue"></i>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-nn-blue to-cyan-600 text-nn-dark font-bold py-3 rounded-xl">
+                    <i class="fas fa-search mr-2"></i> Detect Objects
+                </button>
+
+            </form>
+        </div>
+
+        <!-- ================= VIDEO ================= -->
+        <div class="dashboard-card bg-gray-900/70 rounded-3xl shadow-xl p-10 text-center">
+
+            <!-- Icon -->
+            <div class="mx-auto mb-6 w-24 h-24 rounded-full bg-nn-blue/10 flex items-center justify-center">
+                <i class="fas fa-video text-5xl text-nn-blue"></i>
+            </div>
+
+            <h3 class="text-2xl font-bold text-white mb-3">Upload Video</h3>
+            <p class="text-gray-400 mb-6">Analyze videos frame by frame</p>
+
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_video') }}">
+
+                <!-- File Input -->
+                <div class="relative mb-5">
+                    <input type="file" name="file" accept="video/*" required
+                        class="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white file:hidden cursor-pointer">
+                    
+                    <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-nn-blue"></i>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-nn-blue to-cyan-600 text-nn-dark font-bold py-3 rounded-xl">
+                    <i class="fas fa-play mr-2"></i> Process Video
+                </button>
+
+            </form>
+        </div>
+
+        <!-- ================= WEBCAM ================= -->
+        <div class="dashboard-card bg-gray-900/70 rounded-3xl shadow-xl p-10 text-center flex flex-col">
+
+            <!-- Icon -->
+            <div class="mx-auto mb-6 w-24 h-24 rounded-full bg-nn-blue/10 flex items-center justify-center">
+                <i class="fas fa-camera text-5xl text-nn-blue"></i>
+            </div>
+
+            <h3 class="text-2xl font-bold text-white mb-3">Live Webcam</h3>
+            <p class="text-gray-400 mb-6 flex-grow">Real-time detection from your camera</p>
+
+            <a href="{{ url_for('webcam') }}"
+               class="mt-auto w-full bg-gradient-to-r from-nn-blue to-cyan-600 text-nn-dark font-bold py-3 rounded-xl flex items-center justify-center">
+                
+                <i class="fas fa-video mr-2"></i> Start Live Detection
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

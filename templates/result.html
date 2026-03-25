@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Detection Result{% endblock %}
+
+{% block content %}
+
+<div class="min-h-screen bg-nn-dark px-6 py-10 flex flex-col items-center">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+        <h2 class="text-4xl font-extrabold text-nn-blue mb-2">
+            Detection Result
+        </h2>
+        <p class="text-gray-400 text-lg">
+            AI analysis of uploaded image
+        </p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="w-full max-w-5xl bg-gray-900/70 backdrop-blur-xl border border-gray-700/50 rounded-3xl shadow-2xl p-8">
+
+        <!-- Image -->
+        <div class="flex justify-center mb-8">
+            <img src="{{ image_url }}" 
+                 class="rounded-2xl shadow-lg border border-gray-700 max-h-[500px] object-contain">
+        </div>
+
+        <!-- ALERT SECTION -->
+        {% if high_risk %}
+        <div class="flex items-center justify-center gap-3 bg-red-500/20 border border-red-500 text-red-400 px-6 py-4 rounded-xl text-lg font-semibold mb-6">
+            <i class="fas fa-exclamation-triangle text-xl"></i>
+            HIGH RISK: Person Holding Sharp Object Detected!
+        </div>
+
+        {% elif alert %}
+        <div class="flex items-center justify-center gap-3 bg-yellow-500/20 border border-yellow-500 text-yellow-400 px-6 py-4 rounded-xl text-lg font-semibold mb-6">
+            <i class="fas fa-exclamation-circle text-xl"></i>
+            Sharp Object Detected!
+        </div>
+
+        {% else %}
+        <div class="flex items-center justify-center gap-3 bg-green-500/20 border border-green-500 text-green-400 px-6 py-4 rounded-xl text-lg font-semibold mb-6">
+            <i class="fas fa-check-circle text-xl"></i>
+            No sharp objects detected
+        </div>
+        {% endif %}
+
+        <!-- TABLE TITLE -->
+        <h3 class="text-2xl font-bold text-white mb-4 text-center">
+            Detected Objects
+        </h3>
+
+        <!-- TABLE -->
+        <div class="overflow-hidden rounded-2xl border border-gray-700">
+            <table class="w-full text-left text-gray-300">
+                
+                <thead class="bg-gray-800 text-nn-blue">
+                    <tr>
+                        <th class="px-6 py-4 text-lg">Object</th>
+                        <th class="px-6 py-4 text-lg">Count</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for obj, cnt in counts.items() %}
+                    <tr class="border-t border-gray-700 hover:bg-gray-800/50 transition">
+                        <td class="px-6 py-4 flex items-center gap-3">
+                            <i class="fas fa-cube text-nn-blue"></i>
+                            {{ obj }}
+                        </td>
+                        <td class="px-6 py-4 font-semibold">{{ cnt }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+        <!-- BUTTON -->
+        <div class="mt-10 text-center">
+            <a href="{{ url_for('dashboard') }}"
+               class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-nn-blue to-cyan-600 text-nn-dark font-bold text-lg rounded-2xl shadow-lg hover:scale-105 transition">
+
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
