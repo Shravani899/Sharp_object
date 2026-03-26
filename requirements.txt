@@ -8,3 +8,4 @@ ultralytics
 torch
 torchvision
 pillow
+gunicorn
